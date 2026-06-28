@@ -1,3 +1,5 @@
+# app.py - PERBAIKAN DENGAN AUTO CREATE FOLDER
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -250,12 +252,6 @@ with st.sidebar:
     - 🟢 Graduate: Lulus
     - 🟡 Enrolled: Aktif
     - 🔴 Dropout: Berisiko
-    
-    **Faktor Risiko:**
-    1. Nilai Semester 1 rendah
-    2. SKS terlalu banyak
-    3. Tidak ada beasiswa
-    4. Memiliki hutang
     """)
     
     if model is not None:
