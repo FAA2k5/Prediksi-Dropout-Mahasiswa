@@ -18,21 +18,25 @@ st.set_page_config(
 )
 
 # ============================================
-# LOAD MODEL - TANPA PEMBERITAHUAN
+# LOAD MODEL DARI ROOT DIRECTORY
 # ============================================
 @st.cache_resource
 def load_models():
-    """Load semua model dan preprocessor"""
+    """Load semua model dari root directory"""
     try:
-        model = joblib.load('model/best_model.pkl')
-        scaler = joblib.load('model/scaler.pkl')
-        selector = joblib.load('model/selector.pkl')
-        encoder_target = joblib.load('model/encoder_target.pkl')
+        # Cari file di root directory (tempat app.py berada)
+        base_dir = '.'
+        
+        # Load model
+        model = joblib.load(os.path.join(base_dir, 'best_model.pkl'))
+        scaler = joblib.load(os.path.join(base_dir, 'scaler.pkl'))
+        selector = joblib.load(os.path.join(base_dir, 'selector.pkl'))
+        encoder_target = joblib.load(os.path.join(base_dir, 'encoder_target.pkl'))
         
         # Load selected features
         selected_features = []
         try:
-            with open('model/selected_features.txt', 'r') as f:
+            with open(os.path.join(base_dir, 'selected_features.txt'), 'r') as f:
                 selected_features = [line.strip() for line in f.readlines()]
         except:
             if hasattr(selector, 'feature_names_in_'):
@@ -40,16 +44,17 @@ def load_models():
         
         # Load encoders
         encoders = {}
-        for file in os.listdir('model'):
+        for file in os.listdir(base_dir):
             if file.startswith('encoder_') and file != 'encoder_target.pkl' and file.endswith('.pkl'):
                 col_name = file.replace('encoder_', '').replace('.pkl', '')
-                encoders[col_name] = joblib.load(f'model/{file}')
+                encoders[col_name] = joblib.load(os.path.join(base_dir, file))
         
         return model, scaler, selector, encoder_target, encoders, selected_features
     except Exception as e:
+        st.error(f"❌ Error loading model: {e}")
         return None, None, None, None, None, None
 
-# Load model (tanpa pemberitahuan)
+# Load model
 model, scaler, selector, encoder_target, encoders, selected_features = load_models()
 
 # ============================================
@@ -189,10 +194,6 @@ st.markdown("""
         transform: scale(1.02);
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
-    .stSelectbox label, .stNumberInput label {
-        font-weight: bold;
-        color: #333;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -203,6 +204,29 @@ st.markdown("""
     <p style="font-size: 18px; opacity: 0.9;">Jaya Jaya Institut</p>
 </div>
 """, unsafe_allow_html=True)
+
+# Cek model
+if model is None:
+    st.error("""
+    ### ❌ Model Tidak Ditemukan!
+    
+    **Cara Mengatasi:**
+    1. Upload semua file model ke root directory (satu folder dengan app.py)
+    2. File yang dibutuhkan:
+       - `best_model.pkl`
+       - `scaler.pkl`
+       - `selector.pkl`
+       - `encoder_target.pkl`
+       - `encoder_*.pkl` (semua file encoder)
+       - `selected_features.txt`
+    
+    **Cara Upload di GitHub:**
+    1. Buka repository di GitHub
+    2. Klik `Add file` → `Upload files`
+    3. Drag and drop semua file model
+    4. Klik `Commit changes`
+    """)
+    st.stop()
 
 # Info singkat
 st.markdown("""
@@ -467,7 +491,7 @@ predict_btn = st.button("🔮 Prediksi Status Mahasiswa", use_container_width=Tr
 # ============================================
 if predict_btn:
     if model is None:
-        st.error("❌ Model tidak tersedia. Pastikan file model ada di folder 'model/'")
+        st.error("❌ Model tidak tersedia. Pastikan file model ada di root directory.")
     else:
         with st.spinner("🔄 Memproses data..."):
             try:
