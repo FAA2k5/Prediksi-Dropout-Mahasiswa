@@ -24,6 +24,9 @@ def load_models():
         selector = joblib.load(os.path.join(base_dir, 'selector.pkl'))
         encoder_target = joblib.load(os.path.join(base_dir, 'encoder_target.pkl'))
         
+        # AMBIL SEMUA FITUR YANG DIBUTUHKAN MODEL
+        all_features = list(selector.feature_names_in_)
+        
         selected_features = []
         try:
             with open(os.path.join(base_dir, 'selected_features.txt'), 'r') as f:
@@ -38,12 +41,12 @@ def load_models():
                 col_name = file.replace('encoder_', '').replace('.pkl', '')
                 encoders[col_name] = joblib.load(os.path.join(base_dir, file))
         
-        return model, scaler, selector, encoder_target, encoders, selected_features
+        return model, scaler, selector, encoder_target, encoders, selected_features, all_features
     except Exception as e:
         st.error(f"Error loading model: {e}")
-        return None, None, None, None, None, None
+        return None, None, None, None, None, None, None
 
-model, scaler, selector, encoder_target, encoders, selected_features = load_models()
+model, scaler, selector, encoder_target, encoders, selected_features, ALL_FEATURES = load_models()
 
 if model is None:
     st.error("""
@@ -59,17 +62,21 @@ if model is None:
     """)
     st.stop()
 
+# TAMPILKAN FITUR YANG DIBUTUHKAN (DEBUG - BISA DIHAPUS NANTI)
+with st.expander("🔍 Info Model"):
+    st.write(f"Jumlah fitur yang dibutuhkan: {len(ALL_FEATURES)}")
+    st.write("Fitur:", ALL_FEATURES)
+
 def preprocess_input(data):
     df = data.copy()
     
-    if selected_features:
-        df_final = pd.DataFrame()
-        for col in selected_features:
-            if col in df.columns:
-                df_final[col] = df[col]
-            else:
-                df_final[col] = 0
-        df = df_final
+    # PASTIKAN SEMUA FITUR YANG DIBUTUHKAN MODEL ADA
+    for col in ALL_FEATURES:
+        if col not in df.columns:
+            df[col] = 0
+    
+    # URUTKAN SESUAI YANG DIBUTUHKAN MODEL
+    df = df[ALL_FEATURES]
     
     for col, encoder in encoders.items():
         if col in df.columns:
@@ -446,48 +453,53 @@ if predict_btn:
     else:
         with st.spinner("Memproses data..."):
             try:
-                # ==================== BUAT INPUT DATA ====================
-                input_data = pd.DataFrame({
-                    'Marital_status': [marital_status],
-                    'Application_mode': [app_mode],
-                    'Application_order': [app_order],
-                    'Course': [course],
-                    'Daytime_evening_attendance': [attendance],
-                    'Previous_qualification': [prev_qual],
-                    'Previous_qualification_grade': [prev_grade],
-                    'Nacionality': [1],  # <-- DITAMBAHKAN! (nilai default)
-                    'Mothers_qualification': [mother_qual],
-                    'Fathers_qualification': [father_qual],
-                    'Mothers_occupation': [mother_occ],
-                    'Fathers_occupation': [father_occ],
-                    'Admission_grade': [admission_grade],
-                    'Displaced': [displaced],
-                    'Educational_special_needs': [special_needs],
-                    'Debtor': [debtor],
-                    'Tuition_fees_up_to_date': [tuition],
-                    'Gender': [gender],
-                    'Scholarship_holder': [scholarship],
-                    'Age_at_enrollment': [age],
-                    'International': [international],
-                    'Curricular_units_1st_sem_credited': [s1_credited],
-                    'Curricular_units_1st_sem_enrolled': [s1_enrolled],
-                    'Curricular_units_1st_sem_evaluations': [s1_evaluations],
-                    'Curricular_units_1st_sem_approved': [s1_approved],
-                    'Curricular_units_1st_sem_grade': [s1_grade],
-                    'Curricular_units_1st_sem_without_evaluations': [s1_without_eval],
-                    'Curricular_units_2nd_sem_credited': [s2_credited],
-                    'Curricular_units_2nd_sem_enrolled': [s2_enrolled],
-                    'Curricular_units_2nd_sem_evaluations': [s2_evaluations],
-                    'Curricular_units_2nd_sem_approved': [s2_approved],
-                    'Curricular_units_2nd_sem_grade': [s2_grade],
-                    'Curricular_units_2nd_sem_without_evaluations': [s2_without_eval],
-                    'Unemployment_rate': [unemployment_rate],
-                    'Inflation_rate': [inflation_rate],
-                    'GDP': [gdp]
-                })
-                # ========================================================
+                # BUAT INPUT DATA DENGAN SEMUA FITUR
+                input_data = {}
                 
-                status, probabilities = predict(input_data)
+                # Tambahkan semua fitur yang ada di UI
+                input_data['Marital_status'] = [marital_status]
+                input_data['Application_mode'] = [app_mode]
+                input_data['Application_order'] = [app_order]
+                input_data['Course'] = [course]
+                input_data['Daytime_evening_attendance'] = [attendance]
+                input_data['Previous_qualification'] = [prev_qual]
+                input_data['Previous_qualification_grade'] = [prev_grade]
+                input_data['Mothers_qualification'] = [mother_qual]
+                input_data['Fathers_qualification'] = [father_qual]
+                input_data['Mothers_occupation'] = [mother_occ]
+                input_data['Fathers_occupation'] = [father_occ]
+                input_data['Admission_grade'] = [admission_grade]
+                input_data['Displaced'] = [displaced]
+                input_data['Educational_special_needs'] = [special_needs]
+                input_data['Debtor'] = [debtor]
+                input_data['Tuition_fees_up_to_date'] = [tuition]
+                input_data['Gender'] = [gender]
+                input_data['Scholarship_holder'] = [scholarship]
+                input_data['Age_at_enrollment'] = [age]
+                input_data['International'] = [international]
+                input_data['Curricular_units_1st_sem_credited'] = [s1_credited]
+                input_data['Curricular_units_1st_sem_enrolled'] = [s1_enrolled]
+                input_data['Curricular_units_1st_sem_evaluations'] = [s1_evaluations]
+                input_data['Curricular_units_1st_sem_approved'] = [s1_approved]
+                input_data['Curricular_units_1st_sem_grade'] = [s1_grade]
+                input_data['Curricular_units_1st_sem_without_evaluations'] = [s1_without_eval]
+                input_data['Curricular_units_2nd_sem_credited'] = [s2_credited]
+                input_data['Curricular_units_2nd_sem_enrolled'] = [s2_enrolled]
+                input_data['Curricular_units_2nd_sem_evaluations'] = [s2_evaluations]
+                input_data['Curricular_units_2nd_sem_approved'] = [s2_approved]
+                input_data['Curricular_units_2nd_sem_grade'] = [s2_grade]
+                input_data['Curricular_units_2nd_sem_without_evaluations'] = [s2_without_eval]
+                input_data['Unemployment_rate'] = [unemployment_rate]
+                input_data['Inflation_rate'] = [inflation_rate]
+                input_data['GDP'] = [gdp]
+                
+                # TAMBAHKAN Nacionality (dengan nilai default)
+                input_data['Nacionality'] = [1]
+                
+                # Buat DataFrame
+                input_df = pd.DataFrame(input_data)
+                
+                status, probabilities = predict(input_df)
                 
                 if status:
                     st.divider()
@@ -527,7 +539,7 @@ if predict_btn:
                     st.divider()
                     st.header("Rekomendasi")
                     
-                    recommendations = get_recommendations(status, probabilities, input_data)
+                    recommendations = get_recommendations(status, probabilities, input_df)
                     for rec in recommendations:
                         if rec.startswith("RISIKO") or rec.startswith("MAHASISWA BERPRESTASI"):
                             st.markdown(f"### {rec}")
