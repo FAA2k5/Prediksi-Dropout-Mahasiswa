@@ -446,6 +446,7 @@ if predict_btn:
     else:
         with st.spinner("Memproses data..."):
             try:
+                # ==================== BUAT INPUT DATA ====================
                 input_data = pd.DataFrame({
                     'Marital_status': [marital_status],
                     'Application_mode': [app_mode],
@@ -454,6 +455,7 @@ if predict_btn:
                     'Daytime_evening_attendance': [attendance],
                     'Previous_qualification': [prev_qual],
                     'Previous_qualification_grade': [prev_grade],
+                    'Nacionality': [1],  # <-- DITAMBAHKAN! (nilai default)
                     'Mothers_qualification': [mother_qual],
                     'Fathers_qualification': [father_qual],
                     'Mothers_occupation': [mother_occ],
@@ -483,6 +485,7 @@ if predict_btn:
                     'Inflation_rate': [inflation_rate],
                     'GDP': [gdp]
                 })
+                # ========================================================
                 
                 status, probabilities = predict(input_data)
                 
