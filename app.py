@@ -7,9 +7,6 @@ import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
 
-# ============================================
-# KONFIGURASI HALAMAN
-# ============================================
 st.set_page_config(
     page_title="Prediksi Dropout Mahasiswa",
     page_icon="🎓",
@@ -17,23 +14,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ============================================
-# LOAD MODEL DARI ROOT DIRECTORY
-# ============================================
 @st.cache_resource
 def load_models():
-    """Load semua model dari root directory"""
     try:
-        # Cari file di root directory (tempat app.py berada)
         base_dir = '.'
         
-        # Load model
         model = joblib.load(os.path.join(base_dir, 'best_model.pkl'))
         scaler = joblib.load(os.path.join(base_dir, 'scaler.pkl'))
         selector = joblib.load(os.path.join(base_dir, 'selector.pkl'))
         encoder_target = joblib.load(os.path.join(base_dir, 'encoder_target.pkl'))
         
-        # Load selected features
         selected_features = []
         try:
             with open(os.path.join(base_dir, 'selected_features.txt'), 'r') as f:
@@ -42,7 +32,6 @@ def load_models():
             if hasattr(selector, 'feature_names_in_'):
                 selected_features = list(selector.feature_names_in_)
         
-        # Load encoders
         encoders = {}
         for file in os.listdir(base_dir):
             if file.startswith('encoder_') and file != 'encoder_target.pkl' and file.endswith('.pkl'):
@@ -54,17 +43,25 @@ def load_models():
         st.error(f"Error loading model: {e}")
         return None, None, None, None, None, None
 
-# Load model
 model, scaler, selector, encoder_target, encoders, selected_features = load_models()
 
-# ============================================
-# FUNGSI PREPROCESSING
-# ============================================
+if model is None:
+    st.error("""
+    MODEL TIDAK DITEMUKAN!
+    
+    Pastikan file berikut ada di folder yang sama dengan app.py:
+    - best_model.pkl
+    - scaler.pkl
+    - selector.pkl
+    - encoder_target.pkl
+    - encoder_*.pkl
+    - selected_features.txt
+    """)
+    st.stop()
+
 def preprocess_input(data):
-    """Preprocess input data"""
     df = data.copy()
     
-    # Pastikan semua fitur ada
     if selected_features:
         df_final = pd.DataFrame()
         for col in selected_features:
@@ -74,7 +71,6 @@ def preprocess_input(data):
                 df_final[col] = 0
         df = df_final
     
-    # Encode fitur kategorikal
     for col, encoder in encoders.items():
         if col in df.columns:
             try:
@@ -82,13 +78,11 @@ def preprocess_input(data):
             except:
                 df[col] = 0
     
-    # Scaling
     if scaler is not None:
         numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
         if numeric_cols:
             df[numeric_cols] = scaler.transform(df[numeric_cols])
     
-    # Feature selection
     if selector is not None:
         try:
             return selector.transform(df)
@@ -96,11 +90,7 @@ def preprocess_input(data):
             return df.values
     return df.values
 
-# ============================================
-# FUNGSI PREDIKSI
-# ============================================
 def predict(data):
-    """Lakukan prediksi"""
     try:
         X_preprocessed = preprocess_input(data)
         prediction = model.predict(X_preprocessed)
@@ -108,17 +98,13 @@ def predict(data):
         result = encoder_target.inverse_transform(prediction)
         return result[0], prediction_proba[0]
     except Exception as e:
+        st.error(f"Error: {e}")
         return None, None
 
-# ============================================
-# FUNGSI REKOMENDASI (REVISI - Hanya Dropout/Graduate)
-# ============================================
 def get_recommendations(status, probabilities, data):
-    """Berikan rekomendasi berdasarkan hasil prediksi"""
     recommendations = []
     max_prob = max(probabilities)
     
-    # 🔴 REVISI: Hanya handle Dropout dan Graduate
     if status == 'Dropout':
         recommendations.append("RISIKO TINGGI DROPOUT")
         recommendations.append(f"Probabilitas Dropout: {max_prob*100:.1f}%")
@@ -172,9 +158,6 @@ def get_recommendations(status, probabilities, data):
     
     return recommendations
 
-# ============================================
-# TAMPILAN UTAMA
-# ============================================
 st.markdown("""
 <style>
     .main-header {
@@ -209,7 +192,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Header
 st.markdown("""
 <div class="main-header">
     <h1>Sistem Prediksi Dropout Mahasiswa</h1>
@@ -217,37 +199,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Cek model
-if model is None:
-    st.error("""
-    MODEL TIDAK DITEMUKAN!
-    
-    Struktur Folder yang Dibutuhkan:
-    your_repo/
-    ├── best_model.pkl
-    ├── scaler.pkl
-    ├── selector.pkl
-    ├── encoder_target.pkl
-    ├── encoder_*.pkl
-    ├── selected_features.txt
-    ├── app.py
-    └── requirements.txt
-    
-    Cara Mengatasi:
-    1. Upload semua file model ke root directory (satu folder dengan app.py)
-    2. File yang dibutuhkan:
-       - best_model.pkl
-       - scaler.pkl
-       - selector.pkl
-       - encoder_target.pkl
-       - encoder_*.pkl (semua file encoder)
-       - selected_features.txt
-    3. Commit dan push ke GitHub
-    4. Deploy ulang di Streamlit Cloud
-    """)
-    st.stop()
-
-# Info singkat
 st.markdown("""
 <div class="info-box">
     <b>Deteksi Dini Risiko Dropout</b><br>
@@ -256,9 +207,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ============================================
-# SIDEBAR
-# ============================================
 with st.sidebar:
     st.header("Informasi")
     st.markdown("""
@@ -276,12 +224,8 @@ with st.sidebar:
     st.markdown("---")
     st.caption("2024 Jaya Jaya Institut")
 
-# ============================================
-# FORM INPUT DATA
-# ============================================
 st.header("Input Data Mahasiswa")
 
-# Buat 3 kolom untuk input
 col1, col2, col3 = st.columns(3)
 
 with col1:
@@ -440,9 +384,6 @@ with col3:
         format_func=lambda x: "Tidak" if x == 0 else "Ya"
     )
 
-# ============================================
-# DATA AKADEMIK SEMESTER
-# ============================================
 st.header("Data Akademik Semester")
 
 col1, col2 = st.columns(2)
@@ -465,9 +406,6 @@ with col2:
     s2_grade = st.number_input("Nilai Rata-rata S2", min_value=0.0, max_value=20.0, value=12.0, step=0.1)
     s2_without_eval = st.number_input("SKS Tanpa Evaluasi S2", min_value=0, max_value=10, value=0)
 
-# ============================================
-# DATA EKONOMI MAKRO
-# ============================================
 st.header("Data Ekonomi Makro")
 
 col1, col2, col3 = st.columns(3)
@@ -499,22 +437,15 @@ with col3:
         step=100.0
     )
 
-# ============================================
-# TOMBOL PREDIKSI
-# ============================================
 st.divider()
 predict_btn = st.button("Prediksi Status Mahasiswa", use_container_width=True, type="primary")
 
-# ============================================
-# PROSES PREDIKSI
-# ============================================
 if predict_btn:
     if model is None:
         st.error("Model tidak tersedia. Pastikan file model ada di root directory.")
     else:
         with st.spinner("Memproses data..."):
             try:
-                # Kumpulkan data
                 input_data = pd.DataFrame({
                     'Marital_status': [marital_status],
                     'Application_mode': [app_mode],
@@ -553,14 +484,12 @@ if predict_btn:
                     'GDP': [gdp]
                 })
                 
-                # Prediksi
                 status, probabilities = predict(input_data)
                 
                 if status:
                     st.divider()
                     st.header("Hasil Prediksi")
                     
-                    # 🔴 REVISI: Tampilkan status dengan warna
                     if status == 'Dropout':
                         st.error(f"Status: {status}")
                         st.warning("Mahasiswa teridentifikasi berisiko tinggi dropout. Segera lakukan intervensi!")
@@ -568,7 +497,6 @@ if predict_btn:
                         st.success(f"Status: {status}")
                         st.info("Mahasiswa berpotensi lulus tepat waktu. Pertahankan prestasi!")
                     
-                    # Probabilitas
                     st.subheader("Probabilitas Prediksi")
                     
                     prob_df = pd.DataFrame({
@@ -593,7 +521,6 @@ if predict_btn:
                     
                     st.pyplot(fig)
                     
-                    # Rekomendasi
                     st.divider()
                     st.header("Rekomendasi")
                     
@@ -613,9 +540,6 @@ if predict_btn:
             except Exception as e:
                 st.error(f"Terjadi kesalahan: {e}")
 
-# ============================================
-# FOOTER
-# ============================================
 st.divider()
 st.caption("""
 Disclaimer: Sistem ini hanya untuk tujuan prediksi dan rekomendasi awal. 
