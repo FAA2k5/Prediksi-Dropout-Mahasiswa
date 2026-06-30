@@ -51,7 +51,7 @@ def load_models():
         
         return model, scaler, selector, encoder_target, encoders, selected_features
     except Exception as e:
-        st.error(f"❌ Error loading model: {e}")
+        st.error(f"Error loading model: {e}")
         return None, None, None, None, None, None
 
 # Load model
@@ -111,52 +111,64 @@ def predict(data):
         return None, None
 
 # ============================================
-# FUNGSI REKOMENDASI
+# FUNGSI REKOMENDASI (REVISI - Hanya Dropout/Graduate)
 # ============================================
 def get_recommendations(status, probabilities, data):
-    """Berikan rekomendasi"""
+    """Berikan rekomendasi berdasarkan hasil prediksi"""
     recommendations = []
     max_prob = max(probabilities)
     
+    # 🔴 REVISI: Hanya handle Dropout dan Graduate
     if status == 'Dropout':
-        recommendations.append("⚠️ **RISIKO TINGGI DROPOUT**")
-        recommendations.append(f"📊 Probabilitas Dropout: {max_prob*100:.1f}%")
+        recommendations.append("RISIKO TINGGI DROPOUT")
+        recommendations.append(f"Probabilitas Dropout: {max_prob*100:.1f}%")
         recommendations.append("")
-        recommendations.append("📌 Rekomendasi Intervensi:")
+        recommendations.append("Rekomendasi Intervensi:")
         
         if 'Curricular_units_1st_sem_grade' in data.columns:
             grade = data['Curricular_units_1st_sem_grade'].values[0]
             if grade < 10:
-                recommendations.append("   • Program bimbingan belajar intensif")
-                recommendations.append("   • Konseling akademik rutin")
+                recommendations.append("  - Program bimbingan belajar intensif")
+                recommendations.append("  - Konseling akademik rutin (2 minggu sekali)")
+            elif grade < 12:
+                recommendations.append("  - Program bimbingan belajar terjadwal")
         
         if 'Scholarship_holder' in data.columns and data['Scholarship_holder'].values[0] == 0:
-            recommendations.append("   • Pertimbangkan program bantuan biaya pendidikan")
+            recommendations.append("  - Pertimbangkan program bantuan biaya pendidikan")
         
         if 'Debtor' in data.columns and data['Debtor'].values[0] == 1:
-            recommendations.append("   • Bantuan konsultasi keuangan")
+            recommendations.append("  - Bantuan konsultasi keuangan dan penjadwalan pembayaran")
         
         if 'Age_at_enrollment' in data.columns and data['Age_at_enrollment'].values[0] > 25:
-            recommendations.append("   • Program fleksibel untuk mahasiswa dewasa")
+            recommendations.append("  - Program fleksibel untuk mahasiswa dewasa")
+        
+        if 'Curricular_units_1st_sem_enrolled' in data.columns:
+            sks = data['Curricular_units_1st_sem_enrolled'].values[0]
+            if sks > 6:
+                recommendations.append("  - Evaluasi beban SKS (kurangi menjadi 4-5 SKS)")
+        
+        if 'Curricular_units_1st_sem_approved' in data.columns:
+            approved = data['Curricular_units_1st_sem_approved'].values[0]
+            if approved < 3:
+                recommendations.append("  - Program remedial dan pengulangan mata kuliah")
         
         recommendations.append("")
-        recommendations.append("📞 Segera hubungi konselor akademik!")
+        recommendations.append("Segera hubungi konselor akademik untuk pendampingan!")
         
     elif status == 'Graduate':
-        recommendations.append("✅ **MAHASISWA BERPRESTASI**")
-        recommendations.append(f"📊 Probabilitas Lulus: {max_prob*100:.1f}%")
+        recommendations.append("MAHASISWA BERPRESTASI")
+        recommendations.append(f"Probabilitas Lulus: {max_prob*100:.1f}%")
         recommendations.append("")
-        recommendations.append("📌 Rekomendasi:")
-        recommendations.append("   • Pertahankan prestasi akademik")
-        recommendations.append("   • Ikuti program pengembangan karir")
+        recommendations.append("Rekomendasi:")
+        recommendations.append("  - Pertahankan prestasi akademik yang baik")
+        recommendations.append("  - Ikuti program pengembangan karir dan magang")
+        recommendations.append("  - Pertimbangkan program studi lanjut (S2)")
         
-    else:
-        recommendations.append("📚 **MAHASISWA AKTIF**")
-        recommendations.append(f"📊 Probabilitas Aktif: {max_prob*100:.1f}%")
-        recommendations.append("")
-        recommendations.append("📌 Rekomendasi:")
-        recommendations.append("   • Lanjutkan studi dengan baik")
-        recommendations.append("   • Ikuti program mentoring")
+        if 'Curricular_units_1st_sem_grade' in data.columns:
+            grade = data['Curricular_units_1st_sem_grade'].values[0]
+            if grade > 16:
+                recommendations.append("  - Kesempatan menjadi asisten dosen")
+                recommendations.append("  - Ikut program pertukaran pelajar")
     
     return recommendations
 
@@ -200,7 +212,7 @@ st.markdown("""
 # Header
 st.markdown("""
 <div class="main-header">
-    <h1>🎓 Sistem Prediksi Dropout Mahasiswa</h1>
+    <h1>Sistem Prediksi Dropout Mahasiswa</h1>
     <p style="font-size: 18px; opacity: 0.9;">Jaya Jaya Institut</p>
 </div>
 """, unsafe_allow_html=True)
@@ -208,31 +220,38 @@ st.markdown("""
 # Cek model
 if model is None:
     st.error("""
-    ### ❌ Model Tidak Ditemukan!
+    MODEL TIDAK DITEMUKAN!
     
-    **Cara Mengatasi:**
+    Struktur Folder yang Dibutuhkan:
+    your_repo/
+    ├── best_model.pkl
+    ├── scaler.pkl
+    ├── selector.pkl
+    ├── encoder_target.pkl
+    ├── encoder_*.pkl
+    ├── selected_features.txt
+    ├── app.py
+    └── requirements.txt
+    
+    Cara Mengatasi:
     1. Upload semua file model ke root directory (satu folder dengan app.py)
     2. File yang dibutuhkan:
-       - `best_model.pkl`
-       - `scaler.pkl`
-       - `selector.pkl`
-       - `encoder_target.pkl`
-       - `encoder_*.pkl` (semua file encoder)
-       - `selected_features.txt`
-    
-    **Cara Upload di GitHub:**
-    1. Buka repository di GitHub
-    2. Klik `Add file` → `Upload files`
-    3. Drag and drop semua file model
-    4. Klik `Commit changes`
+       - best_model.pkl
+       - scaler.pkl
+       - selector.pkl
+       - encoder_target.pkl
+       - encoder_*.pkl (semua file encoder)
+       - selected_features.txt
+    3. Commit dan push ke GitHub
+    4. Deploy ulang di Streamlit Cloud
     """)
     st.stop()
 
 # Info singkat
 st.markdown("""
 <div class="info-box">
-    <b>📋 Deteksi Dini Risiko Dropout</b><br>
-    Sistem ini membantu mengidentifikasi mahasiswa yang berisiko dropout 
+    <b>Deteksi Dini Risiko Dropout</b><br>
+    Sistem ini memprediksi apakah mahasiswa berpotensi <b>Dropout</b> atau <b>Graduate</b>
     berdasarkan data akademik, demografi, dan sosial-ekonomi.
 </div>
 """, unsafe_allow_html=True)
@@ -241,32 +260,32 @@ st.markdown("""
 # SIDEBAR
 # ============================================
 with st.sidebar:
-    st.header("ℹ️ Informasi")
+    st.header("Informasi")
     st.markdown("""
     **Status Prediksi:**
-    - 🟢 Graduate: Lulus
-    - 🟡 Enrolled: Aktif
-    - 🔴 Dropout: Berisiko
+    - Graduate: Lulus
+    - Dropout: Berisiko
     
     **Faktor Risiko:**
-    1. Nilai Semester 1 rendah
-    2. SKS terlalu banyak
+    1. Nilai Semester 1 rendah (< 10)
+    2. SKS terlalu banyak (> 6)
     3. Tidak ada beasiswa
     4. Memiliki hutang
+    5. Usia > 25 tahun
     """)
     st.markdown("---")
-    st.caption("© 2024 Jaya Jaya Institut")
+    st.caption("2024 Jaya Jaya Institut")
 
 # ============================================
 # FORM INPUT DATA
 # ============================================
-st.header("📝 Input Data Mahasiswa")
+st.header("Input Data Mahasiswa")
 
 # Buat 3 kolom untuk input
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.subheader("👤 Data Demografi")
+    st.subheader("Data Demografi")
     
     gender = st.selectbox(
         "Jenis Kelamin",
@@ -304,7 +323,7 @@ with col1:
     )
 
 with col2:
-    st.subheader("📚 Data Akademik")
+    st.subheader("Data Akademik")
     
     course = st.selectbox(
         "Program Studi",
@@ -371,7 +390,7 @@ with col2:
     )
 
 with col3:
-    st.subheader("💰 Data Sosial-Ekonomi")
+    st.subheader("Data Sosial-Ekonomi")
     
     mother_qual = st.selectbox(
         "Kualifikasi Pendidikan Ibu",
@@ -424,12 +443,12 @@ with col3:
 # ============================================
 # DATA AKADEMIK SEMESTER
 # ============================================
-st.header("📊 Data Akademik Semester")
+st.header("Data Akademik Semester")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("📘 Semester 1")
+    st.subheader("Semester 1")
     s1_credited = st.number_input("SKS Dikreditkan S1", min_value=0, max_value=20, value=0)
     s1_enrolled = st.number_input("SKS Diambil S1", min_value=0, max_value=12, value=6)
     s1_evaluations = st.number_input("Jumlah Evaluasi S1", min_value=0, max_value=20, value=6)
@@ -438,7 +457,7 @@ with col1:
     s1_without_eval = st.number_input("SKS Tanpa Evaluasi S1", min_value=0, max_value=10, value=0)
 
 with col2:
-    st.subheader("📗 Semester 2")
+    st.subheader("Semester 2")
     s2_credited = st.number_input("SKS Dikreditkan S2", min_value=0, max_value=20, value=0)
     s2_enrolled = st.number_input("SKS Diambil S2", min_value=0, max_value=12, value=6)
     s2_evaluations = st.number_input("Jumlah Evaluasi S2", min_value=0, max_value=20, value=6)
@@ -449,7 +468,7 @@ with col2:
 # ============================================
 # DATA EKONOMI MAKRO
 # ============================================
-st.header("📈 Data Ekonomi Makro")
+st.header("Data Ekonomi Makro")
 
 col1, col2, col3 = st.columns(3)
 
@@ -484,16 +503,16 @@ with col3:
 # TOMBOL PREDIKSI
 # ============================================
 st.divider()
-predict_btn = st.button("🔮 Prediksi Status Mahasiswa", use_container_width=True, type="primary")
+predict_btn = st.button("Prediksi Status Mahasiswa", use_container_width=True, type="primary")
 
 # ============================================
 # PROSES PREDIKSI
 # ============================================
 if predict_btn:
     if model is None:
-        st.error("❌ Model tidak tersedia. Pastikan file model ada di root directory.")
+        st.error("Model tidak tersedia. Pastikan file model ada di root directory.")
     else:
-        with st.spinner("🔄 Memproses data..."):
+        with st.spinner("Memproses data..."):
             try:
                 # Kumpulkan data
                 input_data = pd.DataFrame({
@@ -539,21 +558,18 @@ if predict_btn:
                 
                 if status:
                     st.divider()
-                    st.header("📊 Hasil Prediksi")
+                    st.header("Hasil Prediksi")
                     
-                    # Tampilkan status
+                    # 🔴 REVISI: Tampilkan status dengan warna
                     if status == 'Dropout':
-                        st.error(f"🔴 **Status: {status}**")
-                        st.warning("⚠️ Mahasiswa teridentifikasi berisiko tinggi dropout. Segera lakukan intervensi!")
+                        st.error(f"Status: {status}")
+                        st.warning("Mahasiswa teridentifikasi berisiko tinggi dropout. Segera lakukan intervensi!")
                     elif status == 'Graduate':
-                        st.success(f"🟢 **Status: {status}**")
-                        st.info("✅ Mahasiswa berpotensi lulus tepat waktu.")
-                    else:
-                        st.warning(f"🟡 **Status: {status}**")
-                        st.info("📚 Mahasiswa masih aktif. Pantau perkembangan secara rutin.")
+                        st.success(f"Status: {status}")
+                        st.info("Mahasiswa berpotensi lulus tepat waktu. Pertahankan prestasi!")
                     
                     # Probabilitas
-                    st.subheader("📈 Probabilitas Prediksi")
+                    st.subheader("Probabilitas Prediksi")
                     
                     prob_df = pd.DataFrame({
                         'Status': encoder_target.classes_,
@@ -568,6 +584,7 @@ if predict_btn:
                     ax.set_ylim(0, 1)
                     ax.set_ylabel('Probabilitas')
                     ax.set_title('Probabilitas Prediksi per Status')
+                    ax.grid(axis='y', alpha=0.3)
                     
                     for bar in bars:
                         height = bar.get_height()
@@ -578,29 +595,29 @@ if predict_btn:
                     
                     # Rekomendasi
                     st.divider()
-                    st.header("💡 Rekomendasi")
+                    st.header("Rekomendasi")
                     
                     recommendations = get_recommendations(status, probabilities, input_data)
                     for rec in recommendations:
-                        if rec.startswith("⚠️") or rec.startswith("✅") or rec.startswith("📚"):
+                        if rec.startswith("RISIKO") or rec.startswith("MAHASISWA BERPRESTASI"):
                             st.markdown(f"### {rec}")
-                        elif rec.startswith("📊"):
+                        elif rec.startswith("Probabilitas"):
                             st.info(rec)
-                        elif rec.startswith("📌"):
+                        elif rec.startswith("Rekomendasi"):
                             st.markdown(f"**{rec}**")
-                        elif rec.startswith("   •"):
+                        elif rec.startswith("  -"):
                             st.markdown(f"- {rec.strip()}")
                         else:
                             st.write(rec)
                     
             except Exception as e:
-                st.error(f"❌ Terjadi kesalahan: {e}")
+                st.error(f"Terjadi kesalahan: {e}")
 
 # ============================================
 # FOOTER
 # ============================================
 st.divider()
 st.caption("""
-**Disclaimer:** Sistem ini hanya untuk tujuan prediksi dan rekomendasi awal. 
+Disclaimer: Sistem ini hanya untuk tujuan prediksi dan rekomendasi awal. 
 Keputusan akhir tetap pada institusi dan konselor akademik.
 """)
